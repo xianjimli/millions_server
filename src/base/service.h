@@ -3,7 +3,7 @@
 
 #include "worker.h"
 
-bool service_start(const char* ip, int port, worker_func work);
+bool service_start(const char* ip, int port, worker_ops_t* ops);
 
 bool service_loop();
 bool service_quit();

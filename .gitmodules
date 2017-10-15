@@ -1,0 +1,9 @@
+[submodule "3rd/libco/src"]
+	path = 3rd/libco/src
+	url = https://github.com/xianjimli/libco.git
+[submodule "3rd/mqtt/src"]
+	path = 3rd/mqtt/src
+	url = https://github.com/xianjimli/paho.mqtt.embedded-c.git
+[submodule "3rd/nginx/src"]
+	path = 3rd/nginx/src
+	url = https://github.com/nginx/nginx.git

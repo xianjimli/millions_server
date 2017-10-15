@@ -1,7 +1,7 @@
 #include <errno.h>
 
 #include "utils.h"
-#include "echo_service.h"
+#include "mqtt_service.h"
 
 typedef struct _service_stat_t {
     time_t start;
@@ -12,17 +12,17 @@ typedef struct _service_stat_t {
 
 static service_stat_t s_stat;
 
-bool echo_service_init() {
+bool mqtt_service_init() {
     s_stat.start = time(0);
 
     return true;
 }
 
-bool echo_service_deinit() {
+bool mqtt_service_deinit() {
     return true;
 }
 
-bool echo_worker_work(worker_t* w) {
+bool mqtt_worker_work(worker_t* w) {
     char buf[1024];
     int fd = w->fd;
     int wret = 0;
@@ -50,25 +50,25 @@ bool echo_worker_work(worker_t* w) {
     return true;
 }
 
-bool echo_worker_init(worker_t* w) {
+bool mqtt_worker_init(worker_t* w) {
     (void)w;
-    printf("echo_worker_init\n");
+    printf("mqtt_worker_init\n");
     return true;
 }
 
-bool echo_worker_deinit(worker_t* w) {
+bool mqtt_worker_deinit(worker_t* w) {
     (void)w;
-    printf("echo_worker_deinit\n");
+    printf("mqtt_worker_deinit\n");
     return true;
 }
 
-static worker_ops_t s_echo_worker_ops = {
-    echo_worker_init,
-    echo_worker_work,
-    echo_worker_deinit
+static worker_ops_t s_mqtt_worker_ops = {
+    mqtt_worker_init,
+    mqtt_worker_work,
+    mqtt_worker_deinit
 };
 
-worker_ops_t* echo_get_worker_ops() {
-    return &s_echo_worker_ops;
+worker_ops_t* mqtt_get_worker_ops() {
+    return &s_mqtt_worker_ops;
 }
 

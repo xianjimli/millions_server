@@ -9,10 +9,15 @@ typedef struct _worker_t worker_t;
 
 typedef bool (*worker_func)(worker_t* w);
 
+typedef struct _worker_ops_t {
+    worker_func init;
+    worker_func work;
+    worker_func deinit;
+}worker_ops_t;
+
 struct _worker_t {
     stCoRoutine_t* co;
-    worker_func work;
-
+    worker_ops_t* ops;
     int fd;
     unsigned short port;
 
@@ -23,7 +28,7 @@ struct _worker_t {
 };
 
 bool workers_init(size_t max_nr, size_t delta);
-bool wroker_start(worker_func func, int fd, unsigned short port);
+bool wroker_start(worker_ops_t* ops, int fd, unsigned short port);
 
 bool workers_quit();
 bool workers_is_quiting();

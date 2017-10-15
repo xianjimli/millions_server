@@ -56,7 +56,8 @@ static void *worker_entry(void *arg) {
                 continue;
             }
 
-            if(!worker->work(worker)) {
+            if(!worker->ops->work(worker)) {
+                worker->ops->deinit(worker);
                 if(worker->fd >= 0) {
                     close(worker->fd);
                     worker->fd = -1;
@@ -67,6 +68,7 @@ static void *worker_entry(void *arg) {
     }
 
     if(worker->fd >= 0) {
+        worker->ops->deinit(worker);
         close(worker->fd);
         worker->fd = -1;
     }
@@ -80,7 +82,7 @@ static bool workers_prealloc(size_t nr) {
     size_t i = 0;
 	stCoRoutineAttr_t attr;
     worker_t* works = NULL;
-    return_value_if_fail((s_workers.total + nr) < s_workers.capacity, false);
+    return_value_if_fail((s_workers.total + nr) <= s_workers.capacity, false);
 
     works = (worker_t*)calloc(nr, sizeof(worker_t));
     return_value_if_fail(works != NULL, false);
@@ -134,15 +136,16 @@ bool workers_init(size_t max_nr, size_t delta) {
     return workers_prealloc(delta);
 }
 
-bool wroker_start(worker_func func, int fd, unsigned short port) {
+bool wroker_start(worker_ops_t* ops, int fd, unsigned short port) {
     return_value_if_fail(workers_ensure(), false);
     worker_t* worker = workers_pop();
-    return_value_if_fail(worker != NULL, false);
+    return_value_if_fail(ops != NULL, false);
 
     worker->fd = fd;
+    worker->ops = ops;
     worker->port = port;
-    worker->work = func;
-    
+    worker->ops->init(worker); 
+
     co_resume(worker->co);
 
     return true;

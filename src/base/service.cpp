@@ -34,7 +34,7 @@ static void *accept_routine(void* arg) {
 		fd_set_nonblock(fd);
         service->requests++;
 
-        if(!wroker_start(service->work, fd, service->port)) {
+        if(!wroker_start(service->ops, fd, service->port)) {
             close(fd);
 		    co_sleep(1000);
 		    printf("start worker failed %d\n", fd);
@@ -46,13 +46,13 @@ static void *accept_routine(void* arg) {
 	return NULL;
 }
 
-bool service_start(const char* ip, int port, worker_func work) {
+bool service_start(const char* ip, int port, worker_ops_t* ops) {
     int fd = 0;
     int ret = 0;
     worker_t * service = NULL;
 	stCoRoutine_t *co = NULL;
 
-    return_value_if_fail(ip != NULL && work != NULL, false);
+    return_value_if_fail(ip != NULL && ops != NULL, false);
 
     service = (worker_t*)calloc(1, sizeof(worker_t));
     return_value_if_fail(service != NULL, false);
@@ -67,7 +67,7 @@ bool service_start(const char* ip, int port, worker_func work) {
 
     service->fd = fd;
     service->port = port;
-    service->work = work;
+    service->ops = ops;
 
 	fd_set_nonblock(fd);
 	co_create(&co, NULL, accept_routine, service);

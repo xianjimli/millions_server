@@ -1,6 +1,6 @@
 #include <signal.h>
 #include "service.h"
-#include "echo_service.h"
+#include "mqtt_service.h"
 
 static void on_quit(int signal){
     printf("(%d):quiting...\n", signal);
@@ -22,11 +22,11 @@ int main(int argc, char* argv[]) {
 	signal(SIGINT, on_quit);
     workers_init(instances, delta);
 
-    echo_service_init();
-    service_start(ip, port, echo_get_worker_ops());
+    mqtt_service_init();
+    service_start(ip, port, mqtt_get_worker_ops());
 
     service_loop();
-    echo_service_deinit();
+    mqtt_service_deinit();
 
     return 0;
 }
