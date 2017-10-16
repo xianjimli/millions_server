@@ -22,7 +22,7 @@ bool echo_service_deinit() {
     return true;
 }
 
-bool echo_worker_work(worker_t* w) {
+static bool echo_worker_work(worker_t* w) {
     char buf[1024];
     int fd = w->fd;
     int wret = 0;
@@ -50,24 +50,37 @@ bool echo_worker_work(worker_t* w) {
     return true;
 }
 
-bool echo_worker_init(worker_t* w) {
+static bool echo_worker_init(worker_t* w) {
     (void)w;
     printf("echo_worker_init\n");
     return true;
 }
 
-bool echo_worker_deinit(worker_t* w) {
+static bool echo_worker_deinit(worker_t* w) {
     (void)w;
     printf("echo_worker_deinit\n");
     return true;
 }
 
+static int echo_worker_write_n(worker_t* w, unsigned char* buf, int len) {
+	if(w->fd > 0) {
+		int ret = write_n(w->fd, buf, len);
+		if(ret > 0) {
+			s_stat.send_bytes += ret;
+		}
+
+		return ret;
+	}
+	
+	return -1;
+}
+
 static worker_ops_t s_echo_worker_ops = {
     echo_worker_init,
     echo_worker_work,
+    echo_worker_write_n,
     echo_worker_deinit
 };
-
 worker_ops_t* echo_get_worker_ops() {
     return &s_echo_worker_ops;
 }

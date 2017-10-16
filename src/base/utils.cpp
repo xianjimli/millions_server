@@ -78,4 +78,49 @@ int co_sleep(int timeout) {
     return fd_pool(-1, timeout);
 }
 
+int read_n(int sock, unsigned char* buf, int len) {
+	int total = 0;
+	int offset = 0;
+	int remain = len;
+
+	while(remain > 0) {
+		int ret = read(sock, buf+offset, remain);
+		if(ret <= 0) {
+			if(errno == EAGAIN) {
+				co_sleep(100);
+			}else{
+				break;
+			}
+		}else{
+			total += ret;
+			offset += ret;
+			remain -= ret;
+		}
+	}
+
+	return total;
+}
+
+int write_n(int sock, unsigned char* buf, int len) {
+	int total = 0;
+	int offset = 0;
+	int remain = len;
+
+	while(remain > 0) {
+		int ret = write(sock, buf+offset, remain);
+		if(ret <= 0) {
+			if(errno == EAGAIN) {
+				co_sleep(100);
+			}else{
+				break;
+			}
+		}else{
+			total += ret;
+			offset += ret;
+			remain -= ret;
+		}
+	}
+
+	return total;
+}
 

@@ -7,3 +7,12 @@
 [submodule "3rd/nginx/src"]
 	path = 3rd/nginx/src
 	url = https://github.com/nginx/nginx.git
+[submodule "3rd/avltree/src"]
+	path = 3rd/avltree/src
+	url = https://github.com/greensky00/avltree.git
+[submodule "3rd/dlist/src"]
+	path = 3rd/dlist/src
+	url = https://github.com/clibs/list.git
+[submodule "3rd/gtest/src"]
+	path = 3rd/gtest/src
+	url = https://github.com/google/googletest.git
