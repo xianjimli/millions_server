@@ -62,7 +62,33 @@ static bool echo_worker_deinit(worker_t* w) {
     return true;
 }
 
-static int echo_worker_write_n(worker_t* w, unsigned char* buf, int len) {
+static int echo_worker_read(worker_t* w, unsigned char* buf, int len) {
+	if(w->fd > 0) {
+		int ret = read(w->fd, buf, len);
+		if(ret > 0) {
+			s_stat.recv_bytes += ret;
+		}
+
+		return ret;
+	}
+	
+	return -1;
+}
+
+static int echo_worker_read_n(worker_t* w, unsigned char* buf, int len) {
+	if(w->fd > 0) {
+		int ret = read_n(w->fd, buf, len);
+		if(ret > 0) {
+			s_stat.recv_bytes += ret;
+		}
+
+		return ret;
+	}
+	
+	return -1;
+}
+
+static int echo_worker_write(worker_t* w, unsigned char* buf, int len) {
 	if(w->fd > 0) {
 		int ret = write_n(w->fd, buf, len);
 		if(ret > 0) {
@@ -78,9 +104,12 @@ static int echo_worker_write_n(worker_t* w, unsigned char* buf, int len) {
 static worker_ops_t s_echo_worker_ops = {
     echo_worker_init,
     echo_worker_work,
-    echo_worker_write_n,
+    echo_worker_read,
+    echo_worker_read_n,
+    echo_worker_write,
     echo_worker_deinit
 };
+
 worker_ops_t* echo_get_worker_ops() {
     return &s_echo_worker_ops;
 }

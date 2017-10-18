@@ -84,11 +84,10 @@ int read_n(int sock, unsigned char* buf, int len) {
 	int remain = len;
 
 	while(remain > 0) {
+		int nr = fd_pool(sock, 10000);
 		int ret = read(sock, buf+offset, remain);
 		if(ret <= 0) {
-			if(errno == EAGAIN) {
-				co_sleep(100);
-			}else{
+			if(nr >= 0) {
 				break;
 			}
 		}else{
@@ -110,7 +109,7 @@ int write_n(int sock, unsigned char* buf, int len) {
 		int ret = write(sock, buf+offset, remain);
 		if(ret <= 0) {
 			if(errno == EAGAIN) {
-				co_sleep(100);
+				int nret = fd_pool(sock, 10000);
 			}else{
 				break;
 			}

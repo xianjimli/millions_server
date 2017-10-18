@@ -236,4 +236,3 @@ bool workers_is_quited() {
     return s_workers.quited;
 }
 
-

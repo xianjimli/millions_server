@@ -9,6 +9,12 @@
 typedef struct _service_stat_t {
     time_t start;
     size_t requests;
+    size_t con_reqs;
+    size_t disc_reqs;
+    size_t pub_reqs;
+    size_t sub_reqs;
+    size_t unsub_reqs;
+    size_t ping_reqs;
     size_t recv_bytes;
     size_t send_bytes;
     size_t connections;
@@ -106,7 +112,7 @@ bool mqtt_on_connect(worker_t* w, unsigned char* buf, size_t len) {
     //TODO: Login
 	ret = MQTTSerialize_connack(out, sizeof(out), 0, 0);
 	if(ret > 0) {
-		ret = w->ops->write_n(w, out, ret);
+		ret = worker_write(w, out, ret);
 	} 
 
 	return ret >= 0;
@@ -135,7 +141,7 @@ bool mqtt_on_publish(worker_t* w, unsigned char* buf, size_t len) {
     ret = MQTTSerialize_puback(out, sizeof(out), packetid);
 
 	if(ret > 0) {
-		ret = w->ops->write_n(w, out, ret);
+		ret = worker_write(w, out, ret);
 	} 
 
 	return ret >= 0;
@@ -173,7 +179,7 @@ bool mqtt_on_subcribe(worker_t* w, unsigned char* buf, size_t len) {
 
     ret = MQTTSerialize_suback(out, sizeof(out), packetid, count, (int*)grantedQoSs); 
 	if(ret > 0) {
-		ret = w->ops->write_n(w, out, ret);
+		ret = worker_write(w, out, ret);
 	} 
 
 	return ret >= 0;
@@ -203,7 +209,7 @@ bool mqtt_on_unsubcribe(worker_t* w, unsigned char* buf, size_t len) {
 
     ret = MQTTSerialize_unsuback(out, sizeof(out), packetid);
 	if(ret > 0) {
-		ret = w->ops->write_n(w, out, ret);
+		ret = worker_write(w, out, ret);
 	} 
 	
 	return ret >= 0;
@@ -217,7 +223,7 @@ bool mqtt_on_ping(worker_t* w, unsigned char* buf, size_t len) {
     (void)len;
     ret = MQTTSerialize_zero(out, sizeof(out), PINGRESP);
 	if(ret > 0) {
-		ret = w->ops->write_n(w, out, ret);
+		ret = worker_write(w, out, ret);
 	} 
 	
 	return ret >= 0;
@@ -231,7 +237,7 @@ bool mqtt_on_disconnect(worker_t* w, unsigned char* buf, size_t len) {
     (void)len;
     ret = MQTTSerialize_zero(out, sizeof(out), DISCONNECT);
 	if(ret > 0) {
-		ret = w->ops->write_n(w, out, ret);
+		ret = worker_write(w, out, ret);
 	} 
 	
 	return ret >= 0;
@@ -239,62 +245,104 @@ bool mqtt_on_disconnect(worker_t* w, unsigned char* buf, size_t len) {
 
 bool mqtt_on_stats(worker_t* w, unsigned char* buf, size_t len) {
 	int ret = 0;
-	char out[RESP_SMALL_BUFF_LEN];
+	char out[RESP_SMALL_BUFF_LEN*2];
     
     (void)buf;
     (void)len;
-    snprintf(out, sizeof(out), "connections:%zu requests:%zu recv_bytes=%zu send_bytes=%zu\n", 
-        s_stat.connections, s_stat.requests, s_stat.recv_bytes, s_stat.send_bytes);
+    snprintf(out, sizeof(out), "conn:%zu reqs:%zu recv_bytes=%zu send_bytes=%zu pub_reqs=%zu\n", 
+        s_stat.connections, s_stat.requests, s_stat.recv_bytes, s_stat.send_bytes, s_stat.pub_reqs);
 
-	ret = w->ops->write_n(w, (unsigned char*)out, strlen((const char*)out));
+	ret = worker_write(w, (unsigned char*)out, strlen((const char*)out));
 
 	return ret >= 0;
 }
 
-static bool mqtt_worker_work(worker_t* w) {
-    unsigned char buf[4096];
-    int fd = w->fd;
-    int rret = read(fd, buf, sizeof(buf));
-    if (rret > 0) {
-        int len = 0;
-    	unsigned char msg_type = buf[0] >> 4;
-
-        s_stat.requests++;
-        s_stat.recv_bytes += rret;
-
-        MQTTPacket_decodeBuf(buf+1, &len);
-        //FIXME: read the whole packet.
-		switch(msg_type) {
-			case PUBLISH: {
-				return mqtt_on_publish(w, buf, rret);
-			}
-			case CONNECT: {
-				return mqtt_on_connect(w, buf, rret);
-			}
-			case SUBSCRIBE: {
-				return mqtt_on_subcribe(w, buf, rret);
-			}
-			case UNSUBSCRIBE: {
-				return mqtt_on_unsubcribe(w, buf, rret);
-			}
-			case PINGREQ: {
-				return mqtt_on_ping(w, buf, rret);
-			}
-			case DISCONNECT: {
-				return mqtt_on_disconnect(w, buf, rret);
-			}
-			default: {
-			    if(strncmp((char*)buf, "stats", 5) == 0) {
-                    return mqtt_on_stats(w, buf, rret);
-                }else{
-				    printf("unkown packet, close client.\n");
-				    return false;
-                }
+static bool mqtt_worker_dispatch(worker_t* w, unsigned char* buf, size_t len) {
+	int msg_type = buf[0] >> 4;
+	printf("msg_type=%d\n", msg_type);
+	s_stat.requests++;
+	switch(msg_type) {
+		case PUBLISH: {
+	        s_stat.pub_reqs++;
+			return mqtt_on_publish(w, buf, len);
+		}
+		case CONNECT: {
+	        s_stat.con_reqs++;
+			return mqtt_on_connect(w, buf, len);
+		}
+		case SUBSCRIBE: {
+	        s_stat.sub_reqs++;
+			return mqtt_on_subcribe(w, buf, len);
+		}
+		case UNSUBSCRIBE: {
+	        s_stat.unsub_reqs++;
+			return mqtt_on_unsubcribe(w, buf, len);
+		}
+		case PINGREQ: {
+	        s_stat.ping_reqs++;
+			return mqtt_on_ping(w, buf, len);
+		}
+		case DISCONNECT: {
+	        s_stat.disc_reqs++;
+			return mqtt_on_disconnect(w, buf, len);
+		}
+		default: {
+			if(strncmp((char*)buf, "st", 2) == 0) {
+				return mqtt_on_stats(w, buf, len);
+			}else{
+				printf("unkown packet, close client.\n");
+				return false;
 			}
 		}
-    }
+	}
+}
 
-	return rret > 0;
+static bool mqtt_worker_read_packet(worker_t* w, unsigned char* buf, size_t size) {
+	int rret = worker_read_n(w, buf, 2);
+	unsigned char* p = buf+1;
+    unsigned char c = *p;
+	int rlen = c & 127;;
+	int multiplier = 128;
+
+	if(rret != 2) {
+		//client closed
+		return false;
+	}
+
+	if(buf[0] == 's' && buf[1] == 't') {
+		p++;
+		read(w->fd, p, size-2);
+		return true;
+	}
+
+	while(c & 128) {
+		p++;
+		rret = worker_read_n(w, p, 1);
+		return_value_if_fail(rret == 1, false);
+
+		c = *p;
+		rlen = rlen + multiplier * (c & 127);
+
+		multiplier *= 128;
+		if((rlen+5) > size) {
+			return false;
+		}
+	}
+
+	p++;
+	rret = worker_read_n(w, p, rlen);
+	return_value_if_fail(rret == rlen, false);
+
+	return true;
+}
+
+static bool mqtt_worker_work(worker_t* w) {
+    unsigned char buf[2048];
+    size_t len = sizeof(buf);
+
+	return_value_if_fail(mqtt_worker_read_packet(w, buf, len), false);
+
+	return mqtt_worker_dispatch(w, buf, len);
 }
 
 static bool mqtt_worker_init(worker_t* w) {
@@ -316,7 +364,33 @@ static bool mqtt_worker_deinit(worker_t* w) {
     return true;
 }
 
-static int mqtt_worker_write_n(worker_t* w, unsigned char* buf, int len) {
+static int mqtt_worker_read(worker_t* w, unsigned char* buf, int len) {
+	if(w->fd > 0) {
+		int ret = read(w->fd, buf, len);
+		if(ret > 0) {
+			s_stat.recv_bytes += ret;
+		}
+
+		return ret;
+	}
+	
+	return -1;
+}
+
+static int mqtt_worker_read_n(worker_t* w, unsigned char* buf, int len) {
+	if(w->fd > 0) {
+		int ret = read_n(w->fd, buf, len);
+		if(ret > 0) {
+			s_stat.recv_bytes += ret;
+		}
+
+		return ret;
+	}
+	
+	return -1;
+}
+
+static int mqtt_worker_write(worker_t* w, unsigned char* buf, int len) {
 	if(w->fd > 0) {
 		int ret = write_n(w->fd, buf, len);
 		if(ret > 0) {
@@ -332,7 +406,9 @@ static int mqtt_worker_write_n(worker_t* w, unsigned char* buf, int len) {
 static worker_ops_t s_mqtt_worker_ops = {
     mqtt_worker_init,
     mqtt_worker_work,
-    mqtt_worker_write_n,
+    mqtt_worker_read,
+    mqtt_worker_read_n,
+    mqtt_worker_write,
     mqtt_worker_deinit
 };
 

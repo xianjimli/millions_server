@@ -18,7 +18,15 @@ static bool demo_worker_work(worker_t* w) {
 }
 
 static int s_send_bytes = 0;
-static int demo_worker_write_n(worker_t* w, unsigned char* buf, int len) {
+static int demo_worker_read(worker_t* w, unsigned char* buf, int len) {
+	return -1;
+}
+
+static int demo_worker_read_n(worker_t* w, unsigned char* buf, int len) {
+	return -1;
+}
+
+static int demo_worker_write(worker_t* w, unsigned char* buf, int len) {
 	s_send_bytes += len;
 
 	return -1;
@@ -27,7 +35,9 @@ static int demo_worker_write_n(worker_t* w, unsigned char* buf, int len) {
 static worker_ops_t s_demo_worker_ops = {
     demo_worker_init,
     demo_worker_work,
-    demo_worker_write_n,
+    demo_worker_read,
+    demo_worker_read_n,
+    demo_worker_write,
     demo_worker_deinit
 };
 

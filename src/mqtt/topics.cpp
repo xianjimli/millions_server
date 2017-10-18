@@ -30,6 +30,7 @@ static int topic_cmp(struct avl_node *a, struct avl_node *b, void *aux) {
 	topic_node_t* aa = (topic_node_t*)a;	
 	topic_node_t* bb = (topic_node_t*)b;	
 
+	(void)aux;
 	return strcmp(aa->item.topic, bb->item.topic);
 }
 
@@ -86,7 +87,7 @@ bool topics_pub(topics_t* t, const char* topic, const void* payload, size_t len)
 
 		while(iter) {
 			worker_t* w = (worker_t*)iter->val;
-			w->ops->write_n(w, (unsigned char*)payload, len);
+			worker_write(w, (unsigned char*)payload, len);
 			
 			iter = iter->next;
 			if(iter == head) {
